@@ -9,9 +9,10 @@ app = Flask(_name_)
 
 HTML = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voice Agent</title>
 
 <style>
@@ -45,8 +46,8 @@ button{
     height:120px;
     border-radius:50%;
     border:none;
-    background:white;
-    color:black;
+    background:#fff;
+    color:#000;
     font-size:18px;
     font-weight:bold;
     cursor:pointer;
@@ -82,11 +83,11 @@ button:hover{
 <script>
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const statusText = document.getElementById("status");
+const status = document.getElementById("status");
 
 async function send(command){
 
-    let response = await fetch("/agent",{
+    const response = await fetch("/agent",{
         method:"POST",
         headers:{
             "Content-Type":"application/json"
@@ -96,21 +97,21 @@ async function send(command){
         })
     });
 
-    let data = await response.json();
+    const data = await response.json();
 
     if(data.error){
-        statusText.innerText = data.error;
+        status.innerText = data.error;
         return;
     }
 
-    statusText.innerText="Opening...";
+    status.innerText="Opening...";
     window.open(data.url,"_blank");
 }
 
 function start(){
 
     if(!SR){
-        alert("Please use Chrome or Edge.");
+        alert("Please use Chrome or Microsoft Edge.");
         return;
     }
 
@@ -119,20 +120,20 @@ function start(){
     rec.lang="en-US";
 
     rec.onstart=()=>{
-        statusText.innerText="Listening...";
+        status.innerText="Listening...";
     };
 
     rec.onresult=(e)=>{
 
         const text=e.results[0][0].transcript;
 
-        statusText.innerText=text;
+        status.innerText=text;
 
         send(text);
     };
 
     rec.onerror=(e)=>{
-        statusText.innerText=e.error;
+        status.innerText=e.error;
     };
 
     rec.start();
@@ -148,8 +149,8 @@ function start(){
 def find_first_video_id(query):
     try:
         req = urllib.request.Request(
-            "https://www.youtube.com/results?search_query=" +
-            urllib.parse.quote_plus(query),
+            "https://www.youtube.com/results?search_query="
+            + urllib.parse.quote_plus(query),
             headers={
                 "User-Agent": "Mozilla/5.0",
                 "Accept-Language": "en-US"
@@ -163,11 +164,10 @@ def find_first_video_id(query):
         if match:
             return match.group(1)
 
-        return None
-
     except Exception as e:
         print(e)
-        return None
+
+    return None
 
 
 def build_youtube_target(cmd):
@@ -185,15 +185,14 @@ def build_youtube_target(cmd):
         return "https://www.youtube.com"
 
     if play:
+        vid = find_first_video_id(query)
 
-        video = find_first_video_id(query)
-
-        if video:
-            return f"https://www.youtube.com/watch?v={video}&autoplay=1"
+        if vid:
+            return f"https://www.youtube.com/watch?v={vid}&autoplay=1"
 
     return (
-        "https://www.youtube.com/results?search_query=" +
-        urllib.parse.quote_plus(query)
+        "https://www.youtube.com/results?search_query="
+        + urllib.parse.quote_plus(query)
     )
 
 
@@ -233,7 +232,7 @@ def home():
     return render_template_string(HTML)
 
 
-@app.post("/agent")
+@app.route("/agent", methods=["POST"])
 def agent():
 
     data = request.get_json(silent=True)
@@ -256,9 +255,13 @@ def agent():
         )
 
     return jsonify(
-        error="Only YouTube and Gmail commands are supported."
+        error="Only YouTube and Gmail commands are currently supported."
     )
 
 
 if _name_ == "_main_":
-    app.run(debug=True, port=8000)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8000)),
+        debug=True
+    )
